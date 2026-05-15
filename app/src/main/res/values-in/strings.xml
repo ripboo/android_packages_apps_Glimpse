@@ -10,6 +10,7 @@
     <string name="categories_title">Kategori</string>
     <string name="album_favorites">Favorit</string>
     <string name="album_trash">Sampah</string>
+    <string name="album_reels">Reels</string>
     <string name="album_videos">Video</string>
     <plurals name="album_thumbnail_items">
         <item quantity="other">%d item</item>
@@ -46,8 +47,11 @@
     <string name="media_info_add_description_hint">Tambahkan deskripsi</string>
     <string name="media_info_location_loading_placeholder">Memuat...</string>
     <string name="intent_media_not_found">Media tidak ditemukan</string>
+    <string name="file_action_add_to_favorites">Tambahkan ke favorit</string>
     <string name="file_action_delete_forever">Hapus selamanya</string>
+    <string name="file_action_edit">Edit</string>
     <string name="file_action_empty_trash">Kosongkan Sampah</string>
+    <string name="file_action_information">Informasi</string>
     <string name="file_action_move_to_trash">Pindah ke sampah</string>
     <string name="file_action_remove_from_favorites">Hapus dari favorit</string>
     <string name="file_action_restore_from_trash">Pulihkan dari sampah</string>
@@ -64,5 +68,6 @@
     <string name="picker_done">Selesai</string>
     <string name="set_wallpaper_label">Wallpaper</string>
     <string name="set_wallpaper">Atur wallpaper</string>
+    <string name="set_wallpaper_dialog_title">Aktifkan wallpaper</string>
     <string name="set_wallpaper_home_screen">Layar beranda</string>
 </resources>
