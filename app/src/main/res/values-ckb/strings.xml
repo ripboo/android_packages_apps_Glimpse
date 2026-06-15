@@ -4,15 +4,15 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="app_name">گالەری</string>
-    <string name="app_permissions_toast">مۆڵەتەکان لەلایەن بەکارهێنەرەوە نەدراون.</string>
-    <string name="reels_title">ڕیڵز</string>
+    <string name="app_name">پێشانگا</string>
+    <string name="app_permissions_toast">ڕێپێدانەکان لەلایەن بەکارهێنەرەوە نەدراون.</string>
+    <string name="reels_title">گرتە کورتەکان</string>
     <string name="albums_title">ئەلبوومەکان</string>
     <string name="categories_title">پۆلەکان</string>
     <string name="library_title">کتێبخانە</string>
     <string name="album_favorites">دڵخوازەکان</string>
     <string name="album_trash">تەنەکەخۆڵ</string>
-    <string name="album_reels">ڕیڵز</string>
+    <string name="album_reels">گرتە کورتەکان</string>
     <string name="album_photos">وێنەکان</string>
     <string name="album_videos">ڤیدیۆکان</string>
     <plurals name="album_thumbnail_items">
@@ -55,7 +55,7 @@
         <item quantity="one">نەتوانرا پەڕگەکە لە تەنەکەخۆڵ بگەڕێندرێتەوە</item>
         <item quantity="other">نەتوانرا %d پەڕگە لە تەنەکەخۆڵ بگەڕێندرێنەوە</item>
     </plurals>
-    <string name="manage_media_permission_title">بەڕێوبەرایەتیی مۆڵەتی مێدیا</string>
+    <string name="manage_media_permission_title">بەڕێوبەرایەتیی ڕێپێدانی مێدیا</string>
     <string name="manage_media_permission_message">بۆ بەڕێوەبردنی باشتر، ڕێگە بدە بە بەرنامەکە کە دەستی بگات بە پەڕگەکانی مێدیا</string>
     <string name="media_info_unknown">نەناسراو</string>
     <string name="media_info_add_description_hint">وەسفێک زیاد بکە</string>
@@ -76,7 +76,7 @@
     <string name="file_action_move_to_trash">بیخە تەنەکەخۆڵ</string>
     <string name="file_action_remove_from_favorites">لە دڵخوازەکان لایبەر</string>
     <string name="file_action_restore_from_trash">لە تەنەکەخۆڵ بگەڕێنەوە</string>
-    <string name="file_action_share">هاوبەشی پێ بکە</string>
+    <string name="file_action_share">هاوبەشکردن</string>
     <string name="file_action_use_as">بەکاربهێنە وەک</string>
     <string name="file_action_undo_action">بگەڕێوە</string>
     <string name="no_media">هیچ مێدیایەک نییە</string>
@@ -94,5 +94,5 @@
     <string name="set_wallpaper_home_screen">ڕوونمای سەرەکی</string>
     <string name="set_wallpaper_lock_screen">قوفڵی ڕوونما</string>
     <string name="set_wallpaper_both">هەردوو ڕوونمای سەرەکی و قوفڵ</string>
-    <string name="warning_bin_time_period">پەڕگەکان دوای ٣٠ ڕۆژ بۆ هەمیشە دەسڕدرێنەوە.</string>
+    <string name="warning_bin_time_period">پەڕگەکان دوای 30 ڕۆژ بۆ هەمیشە دەسڕدرێنەوە.</string>
 </resources>
