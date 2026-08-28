@@ -8,6 +8,7 @@ package org.lineageos.glimpse.ui.recyclerview
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.view.LayoutInflater
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.OptIn
@@ -69,7 +70,6 @@ class MediaViewerAdapter(
         private val playerView = view.findViewById<PlayerView>(R.id.playerView)
 
         // زر التقاط لقطة من الفيديو
-        // ملاحظة: أضف هذا الزر في ملف media_view.xml بالمعرّف captureFrameButton
         private val captureFrameButton = view.findViewById<MaterialButton>(R.id.captureFrameButton)
 
         private var media: Media? = null
@@ -167,31 +167,38 @@ class MediaViewerAdapter(
         }
 
         /**
-         * يلتقط الإطار الحالي من الفيديو، يحدّث الصورة فورًا، ثم يحفظها في المجلد المخفي.
+         * يلتقط الإطار الحالي المعروض على الشاشة مباشرة ليدعم جميع الصيغ (بما فيها TS).
          */
         private fun captureCurrentFrame() {
             val media = this.media?.takeIf { it.mediaType == MediaType.VIDEO } ?: return
             val context = itemView.context
-            val positionUs = localPlayerViewModel.exoPlayer.currentPosition * 1000
 
             captureJob?.cancel()
             captureJob = itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                val frame = withContext(Dispatchers.IO) {
-                    runCatching {
-                        val retriever = MediaMetadataRetriever()
-                        try {
-                            retriever.setDataSource(context, media.uri)
-                            retriever.getFrameAtTime(
-                                positionUs,
-                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-                            )
-                        } finally {
-                            retriever.release()
-                        }
-                    }.getOrNull()
-                } ?: return@launch
+                // 1. محاولة التقاط الإطار مباشرة من واجهة المشغل TextureView (يدعم TS وجميع الصيغ)
+                var frame: Bitmap? = (playerView.videoSurfaceView as? TextureView)?.bitmap
 
-                val thumbnail = frame.scaledToThumbnail()
+                // 2. إذا لم تكن الواجهة TextureView أو فشل الالتقاط، يتم الرجوع إلى MediaMetadataRetriever كخيار احتياطي
+                if (frame == null) {
+                    val positionUs = localPlayerViewModel.exoPlayer.currentPosition * 1000
+                    frame = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val retriever = MediaMetadataRetriever()
+                            try {
+                                retriever.setDataSource(context, media.uri)
+                                retriever.getFrameAtTime(
+                                    positionUs,
+                                    MediaMetadataRetriever.OPTION_CLOSEST,
+                                )
+                            } finally {
+                                retriever.release()
+                            }
+                        }.getOrNull()
+                    }
+                }
+
+                val capturedBitmap = frame ?: return@launch
+                val thumbnail = capturedBitmap.scaledToThumbnail()
 
                 // تحديث فوري للصورة المعروضة في المشغل
                 Glide.with(imageView).load(thumbnail).into(imageView)
