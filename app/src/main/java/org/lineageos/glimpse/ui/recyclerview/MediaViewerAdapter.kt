@@ -1,11 +1,14 @@
 /*
- * SPDX-FileCopyrightText: The LineageOS Project
+ * SPDX-FileCopyrightText: 2023-2025 The LineageOS Project
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.lineageos.glimpse.ui.recyclerview
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.view.LayoutInflater
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.OptIn
@@ -17,22 +20,25 @@ import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.github.panpf.zoomimage.GlideZoomImageView
+import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.lineageos.glimpse.R
 import org.lineageos.glimpse.ext.fade
 import org.lineageos.glimpse.ext.load
 import org.lineageos.glimpse.models.Media
 import org.lineageos.glimpse.models.MediaType
-import org.lineageos.glimpse.models.MotionPhoto
-import org.lineageos.glimpse.ui.MediaGestureListener
+import org.lineageos.glimpse.models.Thumbnail
+import org.lineageos.glimpse.utils.CapturedFrameCache
 import org.lineageos.glimpse.viewmodels.LocalPlayerViewModel
 
 class MediaViewerAdapter(
     private val localPlayerViewModel: LocalPlayerViewModel,
-    private val onNavigate: (forward: Boolean) -> Unit,
 ) : ListAdapter<Media, MediaViewerAdapter.MediaViewHolder>(UniqueItemDiffCallback()) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = MediaViewHolder(
         LayoutInflater.from(parent.context).inflate(R.layout.media_view, parent, false),
@@ -63,23 +69,22 @@ class MediaViewerAdapter(
             view.findViewById<PlayerControlView>(androidx.media3.ui.R.id.exo_controller)
         private val playerView = view.findViewById<PlayerView>(R.id.playerView)
 
+        // زر التقاط لقطة من الفيديو
+        private val captureFrameButton = view.findViewById<MaterialButton>(R.id.captureFrameButton)
+
         private var media: Media? = null
-        private var motionPhoto: MotionPhoto? = null
         private var isCurrentlyDisplayedView = false
-        private val mediaGestureListener = MediaGestureListener(
-            context = itemView.context,
-            onNavigate = onNavigate,
-        )
+        private var captureJob: Job? = null
 
         @OptIn(androidx.media3.common.util.UnstableApi::class)
         private val mediaPositionObserver: (Int?) -> Unit = { currentPosition: Int? ->
             isCurrentlyDisplayedView = currentPosition == bindingAdapterPosition
 
-            val isVideo = media?.mediaType == MediaType.VIDEO || motionPhoto != null
-            val isNowVideoPlayer = isCurrentlyDisplayedView && isVideo
+            val isNowVideoPlayer = isCurrentlyDisplayedView && media?.mediaType == MediaType.VIDEO
 
             imageView.isVisible = !isNowVideoPlayer
             playerView.isVisible = isNowVideoPlayer
+            captureFrameButton.isVisible = isNowVideoPlayer
 
             if (!isNowVideoPlayer || localPlayerViewModel.fullscreenMode.value) {
                 playerControlView.hideImmediately()
@@ -94,21 +99,12 @@ class MediaViewerAdapter(
 
             playerView.player = player
             playerControlView.player = player
-
-            // Update media gesture listener
-            updateMediaGestureListener(isNowVideoPlayer)
-
-            // Update native seek buttons visibility
-            if (isNowVideoPlayer) {
-                updateNativeSeekButtons()
-            }
         }
 
         private val sheetsHeightObserver = { sheetsHeight: Pair<Int, Int> ->
             if (!localPlayerViewModel.fullscreenMode.value) {
                 val (topHeight, bottomHeight) = sheetsHeight
 
-                // Place the player controls between the two sheets
                 playerControlView.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     topMargin = topHeight
                     bottomMargin = bottomHeight
@@ -123,13 +119,6 @@ class MediaViewerAdapter(
             }
         }
 
-        private val displayedMediaToMotionPhotoObserver = { it: Pair<Media?, MotionPhoto?> ->
-            val (displayedMedia, motionPhoto) = it
-            this.motionPhoto = motionPhoto
-            // Trigger a refresh of the UI
-            mediaPositionObserver(localPlayerViewModel.mediaPosition.value)
-        }
-
         private var observersJob: Job? = null
 
         init {
@@ -140,35 +129,9 @@ class MediaViewerAdapter(
                 localPlayerViewModel.toggleFullscreenMode()
             }
 
-            // A single touch listener handles both edge taps and double taps.
-            imageView.setOnTouchListener(mediaGestureListener)
-            playerView.setOnTouchListener(mediaGestureListener)
-        }
-
-        @OptIn(androidx.media3.common.util.UnstableApi::class)
-        private fun updateMediaGestureListener(isVideoPlayer: Boolean) {
-            mediaGestureListener.edgeTapNavigationEnabled =
-                localPlayerViewModel.edgeTapNavigationEnabled
-
-            mediaGestureListener.doubleTapSeekEnabled =
-                isVideoPlayer && localPlayerViewModel.doubleTapToSeekEnabled
-
-            mediaGestureListener.seekTimeSeconds = localPlayerViewModel.doubleTapToSeekSeconds
-            mediaGestureListener.player = when (
-                isVideoPlayer && localPlayerViewModel.doubleTapToSeekEnabled
-            ) {
-                true -> localPlayerViewModel.exoPlayer
-                false -> null
+            captureFrameButton.setOnClickListener {
+                captureCurrentFrame()
             }
-        }
-
-        @OptIn(androidx.media3.common.util.UnstableApi::class)
-        private fun updateNativeSeekButtons() {
-            val hideButtons = localPlayerViewModel.hideNativeSeekButtons
-
-            // Update PlayerView to show/hide rewind and fast-forward buttons
-            playerView.setShowRewindButton(!hideButtons)
-            playerView.setShowFastForwardButton(!hideButtons)
         }
 
         fun bind(media: Media) {
@@ -188,11 +151,6 @@ class MediaViewerAdapter(
                 launch {
                     localPlayerViewModel.fullscreenMode.collectLatest(fullscreenModeObserver)
                 }
-                launch {
-                    localPlayerViewModel.displayedMediaToMotionPhoto.collectLatest(
-                        displayedMediaToMotionPhotoObserver
-                    )
-                }
             }
         }
 
@@ -201,9 +159,70 @@ class MediaViewerAdapter(
             observersJob?.cancel()
             observersJob = null
 
-            mediaGestureListener.player = null
+            captureJob?.cancel()
+            captureJob = null
+
             playerView.player = null
             playerControlView.player = null
+        }
+
+        /**
+         * يلتقط الإطار الحالي المعروض على الشاشة مباشرة ليدعم جميع الصيغ (بما فيها TS).
+         */
+        private fun captureCurrentFrame() {
+            val media = this.media?.takeIf { it.mediaType == MediaType.VIDEO } ?: return
+            val context = itemView.context
+
+            captureJob?.cancel()
+            captureJob = itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                // 1. محاولة التقاط الإطار مباشرة من واجهة المشغل TextureView (يدعم TS وجميع الصيغ)
+                var frame: Bitmap? = (playerView.videoSurfaceView as? TextureView)?.bitmap
+
+                // 2. إذا لم تكن الواجهة TextureView أو فشل الالتقاط، يتم الرجوع إلى MediaMetadataRetriever كخيار احتياطي
+                if (frame == null) {
+                    val positionUs = localPlayerViewModel.exoPlayer.currentPosition * 1000
+                    frame = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val retriever = MediaMetadataRetriever()
+                            try {
+                                retriever.setDataSource(context, media.uri)
+                                retriever.getFrameAtTime(
+                                    positionUs,
+                                    MediaMetadataRetriever.OPTION_CLOSEST,
+                                )
+                            } finally {
+                                retriever.release()
+                            }
+                        }.getOrNull()
+                    }
+                }
+
+                val capturedBitmap = frame ?: return@launch
+                val thumbnail = capturedBitmap.scaledToThumbnail()
+
+                // تحديث فوري للصورة المعروضة في المشغل
+                Glide.with(imageView).load(thumbnail).into(imageView)
+
+                // حفظ نسخة دائمة في المجلد المخفي على التخزين الخارجي
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        CapturedFrameCache.save(media, thumbnail)
+                    }
+                }
+            }
+        }
+
+        private fun Bitmap.scaledToThumbnail(): Bitmap {
+            val maxSize = Thumbnail.MAX_THUMBNAIL_SIZE
+            if (width <= maxSize && height <= maxSize) return this
+
+            val ratio = minOf(maxSize.toFloat() / width, maxSize.toFloat() / height)
+            return Bitmap.createScaledBitmap(
+                this,
+                (width * ratio).toInt().coerceAtLeast(1),
+                (height * ratio).toInt().coerceAtLeast(1),
+                true,
+            )
         }
     }
 }
