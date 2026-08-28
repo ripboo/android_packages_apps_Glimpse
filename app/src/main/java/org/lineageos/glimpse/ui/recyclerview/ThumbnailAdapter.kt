@@ -32,6 +32,7 @@ import org.lineageos.glimpse.models.Thumbnail
 import org.lineageos.glimpse.viewmodels.AlbumViewModel
 import java.util.Date
 import kotlin.reflect.safeCast
+import org.lineageos.glimpse.utils.CapturedFrameCache
 
 class ThumbnailAdapter : ListAdapter<AlbumViewModel.AlbumContent, RecyclerView.ViewHolder>(
     UniqueItemDiffCallback()
@@ -152,45 +153,44 @@ class ThumbnailAdapter : ListAdapter<AlbumViewModel.AlbumContent, RecyclerView.V
         }
 
         fun bind(media: Media, isSelected: Boolean = false) {
-            this.media = media
-            this.isSelected = isSelected
+    this.media = media
+    this.isSelected = isSelected
 
-            itemView.setOnClickListener {
-                onItemSelected(media)
-            }
-
-            thumbnailImageView.load(
-                media.uri,
-                options = RequestOptions()
-                    .override(
-                        Thumbnail.MAX_THUMBNAIL_SIZE,
-                        Thumbnail.MAX_THUMBNAIL_SIZE
-                    )
-                    .centerCrop()
-            )
-
-            videoOverlayImageView.isVisible = media.mediaType == MediaType.VIDEO
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                thumbnailImageView.setRenderEffect(
-                    when (isSelected) {
-                        true -> blurRenderEffect
-                        false -> null
-                    }
-                )
-            } else {
-                selectionScrimView.isVisible = isSelected
-            }
-
-            selectionCheckedImageView.setImageResource(
-                when (isSelected) {
-                    true -> R.drawable.ic_check_circle
-                    false -> R.drawable.ic_check_circle_outline
-                }
-            )
-        }
+    itemView.setOnClickListener {
+        onItemSelected(media)
     }
 
+    thumbnailImageView.load(
+        // إن وُجدت صورة مصغّرة محفوظة سابقًا، استخدمها بدل الاعتماد على الفيديو مباشرة
+        CapturedFrameCache.get(media) ?: media.uri,
+        options = RequestOptions()
+            .override(
+                Thumbnail.MAX_THUMBNAIL_SIZE,
+                Thumbnail.MAX_THUMBNAIL_SIZE
+            )
+            .centerCrop()
+    )
+
+    videoOverlayImageView.isVisible = media.mediaType == MediaType.VIDEO
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        thumbnailImageView.setRenderEffect(
+            when (isSelected) {
+                true -> blurRenderEffect
+                false -> null
+            }
+        )
+    } else {
+        selectionScrimView.isVisible = isSelected
+    }
+
+    selectionCheckedImageView.setImageResource(
+        when (isSelected) {
+            true -> R.drawable.ic_check_circle
+            false -> R.drawable.ic_check_circle_outline
+        }
+    )
+}
     class DateHeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         // Views
         private val textView = view as TextView
