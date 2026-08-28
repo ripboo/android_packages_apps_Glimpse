@@ -11,9 +11,10 @@ runs:
         java-version: 17
         cache: 'gradle'
 
+    # تعديل الأمر لتجميع نسخة الـ release بدلاً من debug
     - name: Build with Gradle
       shell: bash
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleRelease
 
     - name: Generate Android.bp
       shell: bash
@@ -24,8 +25,9 @@ runs:
           exit -1
         fi
 
+    # تعديل اسم الملف ومسار مخرجات الـ release APK
     - uses: actions/upload-artifact@v7
       with:
-        name: app-debug.apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: app-release.apk
+        path: app/build/outputs/apk/release/app-release.apk
         archive: false
