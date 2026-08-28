@@ -1,6 +1,11 @@
-name: build
+name: Build Pipeline
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -10,5 +15,5 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Build
-      uses: ./.github/workflows/build
+    - name: Run Build Workflow
+      uses: ./.github/workflows/build-action
