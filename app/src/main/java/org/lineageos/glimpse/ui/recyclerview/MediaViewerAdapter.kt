@@ -36,6 +36,8 @@ import org.lineageos.glimpse.models.MediaType
 import org.lineageos.glimpse.models.Thumbnail
 import org.lineageos.glimpse.utils.CapturedFrameCache
 import org.lineageos.glimpse.viewmodels.LocalPlayerViewModel
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 
 class MediaViewerAdapter(
     private val localPlayerViewModel: LocalPlayerViewModel,
