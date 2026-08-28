@@ -72,10 +72,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.androidx.media3.common.ktx)
     implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.exoplayer.dash)
-    implementation(libs.androidx.media3.exoplayer.hls)
-    implementation(libs.androidx.media3.exoplayer.rtsp)
-    implementation(libs.androidx.media3.exoplayer.smoothstreaming)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
@@ -84,9 +80,7 @@ dependencies {
     implementation(libs.androidx.recyclerview.selection)
     implementation(libs.androidx.viewpager2)
     implementation(libs.glide)
-    implementation(libs.glide.okhttp3.integration)
     implementation(libs.material)
-    implementation(libs.okhttp)
     implementation(libs.zoomimage.view.glide)
 }
 
