@@ -7,6 +7,7 @@ package org.lineageos.glimpse.ui.recyclerview
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.net.Uri
 import android.os.Build
 import android.text.format.DateUtils
 import android.view.LayoutInflater
@@ -31,7 +32,9 @@ import org.lineageos.glimpse.models.MediaType
 import org.lineageos.glimpse.models.Thumbnail
 import org.lineageos.glimpse.utils.CapturedFrameCache
 import org.lineageos.glimpse.viewmodels.AlbumViewModel
+import java.io.File
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.safeCast
 
 class ThumbnailAdapter : ListAdapter<AlbumViewModel.AlbumContent, RecyclerView.ViewHolder>(
@@ -160,8 +163,13 @@ class ThumbnailAdapter : ListAdapter<AlbumViewModel.AlbumContent, RecyclerView.V
                 onItemSelected(media)
             }
 
+            // قراءة الكاش من الذاكرة بدلاً من الوصول المباشر للقرص
+            val cachedFile = capturedFrameExistsCache.computeIfAbsent(media.uri) {
+                CapturedFrameCache.get(media)
+            }
+
             thumbnailImageView.load(
-                CapturedFrameCache.get(media) ?: media.uri,
+                cachedFile ?: media.uri,
                 options = RequestOptions()
                     .override(
                         Thumbnail.MAX_THUMBNAIL_SIZE,
@@ -207,6 +215,23 @@ class ThumbnailAdapter : ListAdapter<AlbumViewModel.AlbumContent, RecyclerView.V
 
     companion object {
         private const val BLUR_RADIUS = 15f
+
+        // ذاكرة مؤقتة لتقليل قراءة القرص وتفادي الـ Scroll Jank
+        private val capturedFrameExistsCache = ConcurrentHashMap<Uri, File?>()
+
+        /**
+         * تحديث الكاش عند التقاط صورة جديدة لفيديو معّين لضمان تحديث الواجهة فوراً.
+         */
+        fun updateFrameCache(uri: Uri, file: File) {
+            capturedFrameExistsCache[uri] = file
+        }
+
+        /**
+         * تفريغ الكاش عند الحاجة (مثل حذف التخزين المؤقت).
+         */
+        fun clearFrameCache() {
+            capturedFrameExistsCache.clear()
+        }
 
         @RequiresApi(Build.VERSION_CODES.S)
         private val blurRenderEffect = RenderEffect.createBlurEffect(
