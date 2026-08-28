@@ -135,11 +135,17 @@ class MediaViewerAdapter(
         }
 
         fun bind(media: Media) {
-            this.media = media
+    this.media = media
 
-            imageView.load(media.uri)
-        }
-
+    // تحديد حجم أقصى معقول لتفادي فك تشفير الفيديو بالدقة الكاملة (سبب رئيسي للسخونة)
+    // الصورة الحقيقية للفيديو أثناء التشغيل تُعرض عبر PlayerView وليس عبر imageView
+    imageView.load(
+        media.uri,
+        options = RequestOptions()
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .override(1080, 1080)
+    )
+}
         fun onViewAttachedToWindow() {
             observersJob = itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 launch {
