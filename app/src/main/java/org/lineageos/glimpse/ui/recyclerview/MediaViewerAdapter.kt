@@ -21,6 +21,8 @@ import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import com.github.panpf.zoomimage.GlideZoomImageView
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
@@ -36,8 +38,6 @@ import org.lineageos.glimpse.models.MediaType
 import org.lineageos.glimpse.models.Thumbnail
 import org.lineageos.glimpse.utils.CapturedFrameCache
 import org.lineageos.glimpse.viewmodels.LocalPlayerViewModel
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
 
 class MediaViewerAdapter(
     private val localPlayerViewModel: LocalPlayerViewModel,
@@ -137,17 +137,18 @@ class MediaViewerAdapter(
         }
 
         fun bind(media: Media) {
-    this.media = media
+            this.media = media
 
-    // تحديد حجم أقصى معقول لتفادي فك تشفير الفيديو بالدقة الكاملة (سبب رئيسي للسخونة)
-    // الصورة الحقيقية للفيديو أثناء التشغيل تُعرض عبر PlayerView وليس عبر imageView
-    imageView.load(
-        media.uri,
-        options = RequestOptions()
-            .diskCacheStrategy(DiskCacheStrategy.ALL)
-            .override(1080, 1080)
-    )
-}
+            // تحديد حجم أقصى معقول لتفادي فك تشفير الفيديو بالدقة الكاملة (سبب رئيسي للسخونة)
+            // الصورة الحقيقية للفيديو أثناء التشغيل تُعرض عبر PlayerView وليس عبر imageView
+            imageView.load(
+                media.uri,
+                options = RequestOptions()
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .override(1080, 1080)
+            )
+        }
+
         fun onViewAttachedToWindow() {
             observersJob = itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 launch {
@@ -211,10 +212,11 @@ class MediaViewerAdapter(
                 // تحديث فوري للصورة المعروضة في المشغل
                 Glide.with(imageView).load(thumbnail).into(imageView)
 
-                // حفظ نسخة دائمة في المجلد المخفي على التخزين الخارجي
+                // حفظ نسخة دائمة في المجلد المخفي على التخزين الخارجي وتحديث الكاش المؤقت للشبكة
                 withContext(Dispatchers.IO) {
                     runCatching {
-                        CapturedFrameCache.save(media, thumbnail)
+                        val savedFile = CapturedFrameCache.save(media, thumbnail)
+                        ThumbnailAdapter.updateFrameCache(media.uri, savedFile)
                     }
                 }
             }
