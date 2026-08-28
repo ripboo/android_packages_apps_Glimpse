@@ -19,12 +19,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-import okhttp3.OkHttpClient
-import okhttp3.Request
+// تم إزالة استيراد OkHttp
 import org.lineageos.glimpse.ViewActivity
 import org.lineageos.glimpse.ext.applicationContext
 import org.lineageos.glimpse.ext.asArray
-import org.lineageos.glimpse.ext.executeAsync
 import org.lineageos.glimpse.ext.getParcelable
 import org.lineageos.glimpse.ext.getSerializable
 import org.lineageos.glimpse.models.Album
@@ -42,56 +40,27 @@ import java.util.Date
  */
 class IntentsViewModel(application: Application) : GlimpseViewModel(application) {
     sealed class ParsedIntent {
-        /**
-         * Open the app's home page.
-         */
         class MainIntent : ParsedIntent()
 
-        /**
-         * View a content.
-         *
-         * @param medias The items to show
-         */
         class ViewIntent(
             val medias: List<Media>,
         ) : ParsedIntent()
 
-        /**
-         * Review a content.
-         *
-         * @param albumRequest The [AlbumViewModel.AlbumRequest] to show
-         * @param initialMedia The [Media] from which we should start
-         */
         class ReviewIntent(
             val albumRequest: AlbumViewModel.AlbumRequest? = null,
             val initialMedia: Media? = null,
         ) : ParsedIntent()
 
-        /**
-         * Review content securely.
-         *
-         * @param medias The list of [Media] to show
-         */
         class SecureReviewIntent(
             val medias: List<Media>,
         ) : ParsedIntent()
 
-        /**
-         * Pick a content.
-         *
-         * @param mediaType The file type to select, null to avoid filtering
-         * @param mimeType The type to select, null to avoid filtering
-         * @param multiple Whether multiple items can be selected
-         */
         class PickIntent(
             val mediaType: MediaType? = null,
             val mimeType: String? = null,
             val multiple: Boolean = false,
         ) : ParsedIntent()
 
-        /**
-         * Pick a photo to be used as wallpaper.
-         */
         class SetWallpaperIntent : ParsedIntent()
 
         private var handled = false
@@ -108,8 +77,7 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
         }
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .build()
+    // تم إزالة okHttpClient بالكامل
 
     private val currentIntent = MutableStateFlow<Intent?>(null)
 
@@ -132,7 +100,6 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                 }
 
                 intent.clipData?.let { clipData ->
-                    // Do a best effort to get a valid media type from the clip data
                     val mediaType =
                         (0 until clipData.description.mimeTypeCount).firstNotNullOfOrNull {
                             MimeUtils.mimeTypeToMediaType(clipData.description.getMimeType(it))
@@ -150,12 +117,9 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                 when (it) {
                     MediaStore.Images.Media.CONTENT_TYPE -> MimeUtils.MIME_TYPE_IMAGE_ANY
                     MediaStore.Video.Media.CONTENT_TYPE -> MimeUtils.MIME_TYPE_VIDEO_ANY
-
                     MimeUtils.MIME_TYPE_ANY -> null
-
                     else -> when {
                         it.startsWith("image/") || it.startsWith("video/") -> it
-
                         else -> null
                     }
                 }
@@ -220,9 +184,6 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
             null,
         )
 
-    /**
-     * Whether we are picking items.
-     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val isPicking = parsedIntent
         .mapLatest { it is ParsedIntent.PickIntent }
@@ -233,9 +194,6 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
             false,
         )
 
-    /**
-     * Whether multiple items can be selected.
-     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val allowMultipleSelection = parsedIntent
         .mapLatest {
@@ -255,9 +213,6 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
         currentIntent.value = intent
     }
 
-    /**
-     * Given a URI and a pre-parsed media type, get a [MediaItem] object.
-     */
     private suspend fun uriToContent(uri: Uri, mediaType: MediaType?): MediaItem<*>? {
         val type = mediaType ?: uriToType(uri) ?: run {
             Log.e(LOG_TAG, "Cannot get media type of $uri")
@@ -273,15 +228,9 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                 is RequestStatus.Loading -> throw Exception(
                     "Shouldn't return RequestStatus.Loading"
                 )
-
                 is RequestStatus.Success -> it.data
-
                 is RequestStatus.Error -> {
-                    // Build a `Media` object with the available data
-                    Log.i(
-                        LOG_TAG,
-                        "Cannot get media object from media provider, trying manual fallback"
-                    )
+                    Log.i(LOG_TAG, "Cannot get media object from media provider, trying manual fallback")
                     when (type) {
                         MediaType.IMAGE,
                         MediaType.VIDEO ->
@@ -302,9 +251,8 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                                 width = 0,
                                 height = 0,
                                 orientation = 0,
-                                sizeBytes = 0,
+                                lastCustomThumbTimestamp = 0L
                             )
-
                         else -> {
                             Log.e(LOG_TAG, "Cannot build media object for $uri")
                             null
@@ -316,8 +264,7 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
     }
 
     /**
-     * Run the URI over the available data sources and check if one of them understands it.
-     * Get the media type of the URI if found.
+     * نسخة معدلة تعمل محلياً فقط ولا تدعم روابط الويب.
      */
     private suspend fun uriToType(uri: Uri) = when (val it = mediaRepository.mediaTypeOf(uri)) {
         is RequestStatus.Loading -> throw Exception("Shouldn't return RequestStatus.Loading")
@@ -335,23 +282,13 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                     MimeUtils.mimeTypeToMediaType(type)
                 }
 
-                "http", "https" -> okHttpClient.newCall(
-                    Request.Builder()
-                        .url(uri.toString())
-                        .head()
-                        .build()
-                ).executeAsync().use { response ->
-                    response.header("Content-Type")?.let { type ->
-                        MimeUtils.mimeTypeToMediaType(type)
-                    }
+                "rtsp" -> MediaType.VIDEO
+
+                // تم إزالة معالجة روابط http/https بالكامل لقطع الاتصال بالإنترنت
+                else -> {
+                    Log.e(LOG_TAG, "Unsupported or non-local scheme: ${uri.scheme}")
+                    null
                 }
-
-                "rtsp" -> MediaType.VIDEO // This is either audio-only or A/V, fine either way
-
-                else -> null
-            } ?: run {
-                Log.e(LOG_TAG, "Cannot get media type of $uri")
-                null
             }
         }
     }
