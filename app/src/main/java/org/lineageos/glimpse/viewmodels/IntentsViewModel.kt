@@ -296,7 +296,7 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
                                 width = 0,
                                 height = 0,
                                 orientation = 0,
-                                sizeBytes = 0L,
+                                sizeBytes = 0,
                             )
 
                         else -> {
@@ -310,8 +310,7 @@ class IntentsViewModel(application: Application) : GlimpseViewModel(application)
     }
 
     /**
-     * Run the URI over the available data sources and check if one of them understands it.
-     * Get the media type of the URI if found.
+     * Run the URI over local content resolver to get the media type.
      */
     private suspend fun uriToType(uri: Uri) = when (val it = mediaRepository.mediaTypeOf(uri)) {
         is RequestStatus.Loading -> throw Exception("Shouldn't return RequestStatus.Loading")
