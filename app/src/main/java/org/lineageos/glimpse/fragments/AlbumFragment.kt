@@ -333,26 +333,35 @@ class AlbumFragment : Fragment(R.layout.fragment_album) {
         recyclerView.adapter = thumbnailAdapter
 
         thumbnailAdapter.setOnItemSelected { media ->
-            if (intentsViewModel.isPicking.value) {
-                selectionTracker?.select(media)
-            } else {
-                startActivity(
-                    Intent(requireContext(), ViewActivity::class.java).apply {
-                        action = MediaStore.ACTION_REVIEW
-                        setDataAndTypeAndNormalize(media.uri, media.mimeType)
-                        putExtras(
-                            ViewActivity.createBundle(
-                                albumType,
-                                albumUri,
-                                mediaType,
-                                mimeType,
-                            )
-                        )
-                    }
-                )
+    if (intentsViewModel.isPicking.value) {
+        selectionTracker?.select(media)
+    } else {
+        if (media.mediaType == MediaType.VIDEO) {
+            // لا نفتح المشغل الداخلي، بل نعرض قائمة اختيار التطبيق
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndTypeAndNormalize(media.uri, media.mimeType)
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
-        }
 
+            startActivity(Intent.createChooser(viewIntent, null))
+        } else {
+            startActivity(
+                Intent(requireContext(), ViewActivity::class.java).apply {
+                    action = MediaStore.ACTION_REVIEW
+                    setDataAndTypeAndNormalize(media.uri, media.mimeType)
+                    putExtras(
+                        ViewActivity.createBundle(
+                            albumType,
+                            albumUri,
+                            mediaType,
+                            mimeType,
+                        )
+                    )
+                }
+            )
+        }
+    }
+}
         selectionTracker = SelectionTracker.Builder(
             "thumbnail-${albumUri}",
             recyclerView,
